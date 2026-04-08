@@ -30,7 +30,8 @@ const C_PLUME      = new THREE.Color('#A17897');
 const C_ROSE       = new THREE.Color('#F7C8E3');
 const C_FUCHSIA    = new THREE.Color('#FF79CE');
 const C_SHINE      = new THREE.Color('#F8FF8A');
-const C_ALL        = C_PLUME; // uniform color override
+const C_LAVENDER   = new THREE.Color('#DCC9D4');
+const PALETTE = [C_FOUNDATION, C_ELDERBERRY, C_PLUME, C_ROSE, C_LAVENDER, C_FUCHSIA, C_SHINE];
 
 const N = 12000;
 const GROUP_A = 2400;
@@ -62,7 +63,7 @@ for (let i = 0; i < N; i++) {
   positions[i * 3 + 1] = y;
   positions[i * 3 + 2] = z;
 
-  _c.copy(C_ALL);
+  _c.copy(PALETTE[Math.floor(Math.random() * PALETTE.length)]);
 
   // Hue jitter ±0.04
   const j = () => (Math.random() - 0.5) * 0.08;
