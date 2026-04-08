@@ -123,9 +123,11 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-function animate() {
+const LOOP_MS = 4000; // exact loop duration in milliseconds
+
+function animate(ts) {
   requestAnimationFrame(animate);
-  group.rotation.y += (0.005 / 3) * 1.3;
+  group.rotation.y = ((ts % LOOP_MS) / LOOP_MS) * Math.PI * 2;
   renderer.render(scene, camera);
 }
 
