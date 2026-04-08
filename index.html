@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SUUN Particle Sphere</title>
+<style>
+  * { margin: 0; padding: 0; }
+  body { background: #fff; overflow: hidden; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<script type="module">
+import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0xffffff, 1);
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.z = 3;
+
+// Brand palette
+const C_FOUNDATION = new THREE.Color('#211823');
+const C_ELDERBERRY = new THREE.Color('#55314C');
+const C_PLUME      = new THREE.Color('#A17897');
+const C_ROSE       = new THREE.Color('#F7C8E3');
+const C_FUCHSIA    = new THREE.Color('#FF79CE');
+const C_SHINE      = new THREE.Color('#F8FF8A');
+
+const N = 12000;
+const GROUP_A = 2400;
+
+const positions = new Float32Array(N * 3);
+const colors    = new Float32Array(N * 3);
+
+const _c = new THREE.Color();
+
+for (let i = 0; i < N; i++) {
+  let phi, theta;
+  if (i < GROUP_A) {
+    do {
+      phi = Math.acos(2 * Math.random() - 1);
+    } while (Math.abs(Math.cos(phi)) < 0.3 && Math.random() < 0.5);
+    theta = 2 * Math.PI * Math.random();
+  } else {
+    const t = Math.random() - 0.5;
+    phi = Math.acos(Math.sign(t) * Math.pow(Math.abs(t) * 2, 0.1));
+    theta = 2 * Math.PI * Math.random();
+  }
+
+  const r = 1 + (Math.random() - 0.5) * 0.15;
+  const x = r * Math.sin(phi) * Math.cos(theta);
+  const y = r * Math.cos(phi);
+  const z = r * Math.sin(phi) * Math.sin(theta);
+
+  positions[i * 3]     = x;
+  positions[i * 3 + 1] = y;
+  positions[i * 3 + 2] = z;
+
+  const lat = Math.abs(y / r);
+
+  if (lat > 0.70) {
+    _c.lerpColors(C_ELDERBERRY, C_FOUNDATION, (lat - 0.70) / 0.30);
+  } else if (lat > 0.40) {
+    _c.lerpColors(C_PLUME, C_ELDERBERRY, (lat - 0.40) / 0.30);
+  } else if (lat > 0.15) {
+    _c.lerpColors(C_ROSE, C_PLUME, (lat - 0.15) / 0.25);
+  } else {
+    _c.copy(Math.random() < 0.05 ? C_SHINE : C_FUCHSIA);
+  }
+
+  // Subtle warm edge bleed at silhouette
+  const edgeness = 1.0 - Math.abs(z / r);
+  if (edgeness > 0.80) {
+    _c.lerp(C_ROSE, (edgeness - 0.80) / 0.20 * 0.35);
+  }
+
+  // Hue jitter ±0.04
+  const j = () => (Math.random() - 0.5) * 0.08;
+  colors[i * 3]     = Math.max(0, Math.min(1, _c.r + j()));
+  colors[i * 3 + 1] = Math.max(0, Math.min(1, _c.g + j()));
+  colors[i * 3 + 2] = Math.max(0, Math.min(1, _c.b + j()));
+}
+
+const vertexShader = `
+  attribute vec3 aColor;
+  varying vec3 vColor;
+  uniform float pointScale;
+  void main() {
+    vColor = aColor;
+    vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+    gl_PointSize = pointScale * (3.0 / -mvPos.z);
+    gl_Position = projectionMatrix * mvPos;
+  }
+`;
+
+const fragmentShader = `
+  varying vec3 vColor;
+  uniform float alphaScale;
+  void main() {
+    float d = length(gl_PointCoord - 0.5);
+    if (d > 0.5) discard;
+    float alpha = smoothstep(0.5, 0.0, d);
+    gl_FragColor = vec4(vColor, alpha * alphaScale);
+  }
+`;
+
+function makeLayer(pointScale, alphaScale) {
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute('aColor',   new THREE.BufferAttribute(colors, 3));
+  const mat = new THREE.ShaderMaterial({
+    vertexShader, fragmentShader,
+    uniforms: {
+      pointScale: { value: pointScale },
+      alphaScale: { value: alphaScale },
+    },
+    blending: THREE.NormalBlending,
+    depthWrite: false,
+    transparent: true,
+  });
+  return new THREE.Points(geo, mat);
+}
+
+const group = new THREE.Group();
+group.add(makeLayer(8.0, 0.12)); // soft halo ring per particle
+group.add(makeLayer(3.5, 0.90)); // core dots
+scene.add(group);
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+function animate() {
+  requestAnimationFrame(animate);
+  group.rotation.y += (0.005 / 3) * 1.3;
+  renderer.render(scene, camera);
+}
+
+animate();
+</script>
+</body>
+</html>
