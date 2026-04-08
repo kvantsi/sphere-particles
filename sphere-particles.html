@@ -29,9 +29,9 @@ function norm3(v) {
 }
 
 // Light from upper-left, toward camera — matches reference highlight position
-const light = norm3([-0.5, 0.5, 0.7]);
+const light = norm3([-0.3, 0.6, 0.75]);
 
-const N = 25000;
+const N = 16000;
 const thetas = new Float32Array(N);
 const phis   = new Float32Array(N);
 const rnd    = new Float32Array(N);
@@ -74,15 +74,15 @@ function frame() {
     const shadow = Math.max(0, -dotL);      // 1 in full shadow, 0 in light
     const lit    = Math.max(0, dotL);       // 1 in full light, 0 in shadow
 
-    // Edge factor: sharp concentration at the silhouette ring
+    // Edge factor: very sharp concentration at the silhouette ring
     const edgeDark = Math.pow(sr, 3.5);
 
     // Interior shadow adds density on the dark side, lit side stays sparse
     const interiorDark = shadow * Math.pow(1.0 - sr, 1.5) * 0.65;
 
-    const darkness = Math.min(1.0, edgeDark + interiorDark);
+    const darkness = Math.min(1.0, edgeDark * 0.92 + interiorDark);
 
-    // Survival probability: lower exponent = more particles survive in bright areas
+    // Survival probability: near-zero at highlight (low darkness), near-1 at edge
     if (rnd[i] > Math.pow(darkness, 0.55)) continue;
 
     const size   = 0.2 + Math.pow(darkness, 0.85) * 9.0;
@@ -96,16 +96,15 @@ function frame() {
     p.arc(sx, sy, size, 0, Math.PI * 2);
   }
 
-  // Back hemisphere: faint — transparent globe effect
+  // Back hemisphere: visible but ghostly — gives see-through depth
   for (let b = 0; b < BUCKETS; b++) {
-    ctx.fillStyle = `rgba(0,0,0,${(0.07 + b * 0.03).toFixed(2)})`;
+    ctx.fillStyle = `rgba(0,0,0,${(0.06 + b * 0.025).toFixed(3)})`;
     ctx.fill(back[b]);
   }
 
-  // Front hemisphere: solid black at the edge
+  // Front hemisphere: solid black
   for (let b = 0; b < BUCKETS; b++) {
-    const alpha = Math.min(1.0, 0.55 + b * 0.07);
-    ctx.fillStyle = `rgba(0,0,0,${alpha.toFixed(2)})`;
+    ctx.fillStyle = `rgba(0,0,0,${(0.55 + b * 0.06).toFixed(2)})`;
     ctx.fill(front[b]);
   }
 
