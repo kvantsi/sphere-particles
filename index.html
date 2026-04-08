@@ -169,16 +169,25 @@ btn.addEventListener('click', async () => { try {
   btn.disabled = true;
 
   // Dynamically import mp4-muxer (WebCodecs-based, no large WASM download)
+  if (!window.VideoEncoder) throw new Error('WebCodecs not supported — use Chrome or Edge');
+
   const { Muxer, ArrayBufferTarget } = await import('https://cdn.jsdelivr.net/npm/mp4-muxer@5/build/mp4-muxer.mjs');
 
-  const target = new ArrayBufferTarget();
-  const muxer  = new Muxer({ target, video: { codec: 'avc', width: W, height: H }, fastStart: 'in-memory' });
+  // H.264 requires even dimensions
+  const EW = W % 2 === 0 ? W : W - 1;
+  const EH = H % 2 === 0 ? H : H - 1;
 
+  const target = new ArrayBufferTarget();
+  const muxer  = new Muxer({ target, video: { codec: 'avc', width: EW, height: EH }, fastStart: 'in-memory' });
+
+  let encoderError = null;
   const encoder = new VideoEncoder({
     output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-    error:  e => console.error(e),
+    error:  e => { encoderError = e; },
   });
-  encoder.configure({ codec: 'avc1.42001f', width: W, height: H, bitrate: 12_000_000, framerate: FPS });
+  // High profile level 5.2 — supports large resolutions
+  encoder.configure({ codec: 'avc1.640034', width: EW, height: EH, bitrate: 12_000_000, framerate: FPS });
+  if (encoderError) throw encoderError;
 
   for (let f = 0; f < TOTAL_FRAMES; f++) {
     btn.textContent = `Rendering ${f + 1} / ${TOTAL_FRAMES}…`;
@@ -187,7 +196,8 @@ btn.addEventListener('click', async () => { try {
     group.rotation.y = (f / TOTAL_FRAMES) * WEDGE;
     renderer.render(scene, camera);
 
-    const bitmap = await createImageBitmap(renderer.domElement);
+    if (encoderError) throw encoderError;
+    const bitmap = await createImageBitmap(renderer.domElement, 0, 0, EW, EH);
     const frame  = new VideoFrame(bitmap, {
       timestamp: Math.round(f * 1_000_000 / FPS),
       duration:  Math.round(1_000_000 / FPS),
