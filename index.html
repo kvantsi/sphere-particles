@@ -30,6 +30,7 @@ const C_PLUME      = new THREE.Color('#A17897');
 const C_ROSE       = new THREE.Color('#F7C8E3');
 const C_FUCHSIA    = new THREE.Color('#FF79CE');
 const C_SHINE      = new THREE.Color('#F8FF8A');
+const C_ALL        = C_PLUME; // uniform color override
 
 const N = 12000;
 const GROUP_A = 2400;
@@ -61,23 +62,7 @@ for (let i = 0; i < N; i++) {
   positions[i * 3 + 1] = y;
   positions[i * 3 + 2] = z;
 
-  const lat = Math.abs(y / r);
-
-  if (lat > 0.70) {
-    _c.lerpColors(C_ELDERBERRY, C_FOUNDATION, (lat - 0.70) / 0.30);
-  } else if (lat > 0.40) {
-    _c.lerpColors(C_PLUME, C_ELDERBERRY, (lat - 0.40) / 0.30);
-  } else if (lat > 0.15) {
-    _c.lerpColors(C_ROSE, C_PLUME, (lat - 0.15) / 0.25);
-  } else {
-    _c.copy(Math.random() < 0.05 ? C_SHINE : C_FUCHSIA);
-  }
-
-  // Subtle warm edge bleed at silhouette
-  const edgeness = 1.0 - Math.abs(z / r);
-  if (edgeness > 0.80) {
-    _c.lerp(C_ROSE, (edgeness - 0.80) / 0.20 * 0.35);
-  }
+  _c.copy(C_ALL);
 
   // Hue jitter ±0.04
   const j = () => (Math.random() - 0.5) * 0.08;
