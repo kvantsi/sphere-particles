@@ -10,6 +10,15 @@ A single-file WebGL/Canvas 2D animation: `sphere-particles.html`. Open it direct
 open sphere-particles.html
 ```
 
+## Git & GitHub
+
+Remote: `https://github.com/kvantsi/sphere-particles`
+
+Always commit **and push** after every change:
+```
+git add sphere-particles.html && git commit -m "..." && git push
+```
+
 ## Architecture
 
 Everything lives in one HTML file with an inline `<script>` block:
