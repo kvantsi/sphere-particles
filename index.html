@@ -33,43 +33,56 @@ const C_SHINE      = new THREE.Color('#F8FF8A');
 const C_LAVENDER   = new THREE.Color('#DCC9D4');
 const PALETTE = [C_FOUNDATION, C_ELDERBERRY, C_PLUME, C_ROSE, C_LAVENDER, C_FUCHSIA, C_SHINE];
 
-const N = 12000;
-const GROUP_A = 2400;
+// 10-fold symmetry: generate 1200 base particles in a 36° wedge, replicate 10×
+// → 12000 total, sphere looks identical every 36° → perfect 5s loop at original speed
+const FOLDS   = 10;
+const N_BASE  = 1200;           // particles in one wedge
+const N       = N_BASE * FOLDS; // 12000 total
+const WEDGE   = Math.PI * 2 / FOLDS; // 36° in radians
+
+const GROUP_A_BASE = 240;  // 20% uniform in base wedge
 
 const positions = new Float32Array(N * 3);
 const colors    = new Float32Array(N * 3);
 
 const _c = new THREE.Color();
 
-for (let i = 0; i < N; i++) {
+for (let i = 0; i < N_BASE; i++) {
   let phi, theta;
-  if (i < GROUP_A) {
+  if (i < GROUP_A_BASE) {
     do {
       phi = Math.acos(2 * Math.random() - 1);
     } while (Math.abs(Math.cos(phi)) < 0.3 && Math.random() < 0.5);
-    theta = 2 * Math.PI * Math.random();
+    theta = Math.random() * WEDGE;
   } else {
     const t = Math.random() - 0.5;
-    phi = Math.acos(Math.sign(t) * Math.pow(Math.abs(t) * 2, 0.1));
-    theta = 2 * Math.PI * Math.random();
+    phi   = Math.acos(Math.sign(t) * Math.pow(Math.abs(t) * 2, 0.1));
+    theta = Math.random() * WEDGE;
   }
 
-  const r = 1 + (Math.random() - 0.5) * 0.15;
-  const x = r * Math.sin(phi) * Math.cos(theta);
-  const y = r * Math.cos(phi);
-  const z = r * Math.sin(phi) * Math.sin(theta);
+  const r  = 1 + (Math.random() - 0.5) * 0.15;
+  const bx = r * Math.sin(phi) * Math.cos(theta);
+  const by = r * Math.cos(phi);
+  const bz = r * Math.sin(phi) * Math.sin(theta);
 
-  positions[i * 3]     = x;
-  positions[i * 3 + 1] = y;
-  positions[i * 3 + 2] = z;
-
+  // Random brand color with jitter — same for all 10 copies of this particle
   _c.copy(PALETTE[Math.floor(Math.random() * PALETTE.length)]);
+  const j  = () => (Math.random() - 0.5) * 0.08;
+  const cr = Math.max(0, Math.min(1, _c.r + j()));
+  const cg = Math.max(0, Math.min(1, _c.g + j()));
+  const cb = Math.max(0, Math.min(1, _c.b + j()));
 
-  // Hue jitter ±0.04
-  const j = () => (Math.random() - 0.5) * 0.08;
-  colors[i * 3]     = Math.max(0, Math.min(1, _c.r + j()));
-  colors[i * 3 + 1] = Math.max(0, Math.min(1, _c.g + j()));
-  colors[i * 3 + 2] = Math.max(0, Math.min(1, _c.b + j()));
+  // Replicate across all 10 wedges
+  for (let k = 0; k < FOLDS; k++) {
+    const idx = (i * FOLDS + k) * 3;
+    const ang = k * WEDGE;
+    positions[idx]     = bx * Math.cos(ang) - bz * Math.sin(ang);
+    positions[idx + 1] = by;
+    positions[idx + 2] = bx * Math.sin(ang) + bz * Math.cos(ang);
+    colors[idx]     = cr;
+    colors[idx + 1] = cg;
+    colors[idx + 2] = cb;
+  }
 }
 
 const vertexShader = `
@@ -113,7 +126,7 @@ function makeLayer(pointScale, alphaScale) {
 }
 
 const group = new THREE.Group();
-group.add(makeLayer(8.0, 0.12)); // soft halo ring per particle
+group.add(makeLayer(8.0, 0.12)); // soft halo per particle
 group.add(makeLayer(3.5, 0.90)); // core dots
 scene.add(group);
 
@@ -123,11 +136,13 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-const LOOP_MS = 4000; // exact loop duration in milliseconds
+// Rotate exactly 1 wedge (36°) in 5 seconds → seamless loop
+// Speed: 0.6283 rad / 5s = 0.002094 rad/frame @ 60fps (vs original 0.002167 — 3.4% diff)
+const LOOP_MS = 5000;
 
 function animate(ts) {
   requestAnimationFrame(animate);
-  group.rotation.y = ((ts % LOOP_MS) / LOOP_MS) * Math.PI * 2;
+  group.rotation.y = ((ts % LOOP_MS) / LOOP_MS) * WEDGE;
   renderer.render(scene, camera);
 }
 
