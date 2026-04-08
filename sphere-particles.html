@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Stipple Sphere</title>
+<style>
+  * { margin: 0; padding: 0; }
+  body { background: #fff; overflow: hidden; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+function dot3(a, b) { return a[0]*b[0] + a[1]*b[1] + a[2]*b[2]; }
+function norm3(v) {
+  const l = Math.sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]);
+  return [v[0]/l, v[1]/l, v[2]/l];
+}
+
+// Light from upper-left, toward camera — matches reference highlight position
+const light = norm3([-0.3, 0.6, 0.75]);
+
+const N = 16000;
+const thetas = new Float32Array(N);
+const phis   = new Float32Array(N);
+const rnd    = new Float32Array(N);
+
+for (let i = 0; i < N; i++) {
+  thetas[i] = Math.acos(2 * Math.random() - 1);
+  phis[i]   = Math.random() * Math.PI * 2;
+  rnd[i]    = Math.random();
+}
+
+let rotY = 0;
+const BUCKETS = 8;
+
+function frame() {
+  rotY += 0.004;
+
+  const W = canvas.width, H = canvas.height;
+  const R = Math.min(W, H) * 0.38;
+  const cx = W / 2, cy = H / 2;
+
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, W, H);
+
+  const back  = Array.from({length: BUCKETS}, () => new Path2D());
+  const front = Array.from({length: BUCKETS}, () => new Path2D());
+
+  for (let i = 0; i < N; i++) {
+    const phi  = phis[i] + rotY;
+    const sinT = Math.sin(thetas[i]);
+    const x    =  sinT * Math.cos(phi);
+    const y    =  Math.cos(thetas[i]);
+    const z    =  sinT * Math.sin(phi);
+
+    // sr: screen-space radial distance from projected center (0=center, 1=silhouette edge)
+    // This is the correct "edge proximity" measure — it maps to what you see on screen.
+    const sr = Math.sqrt(x * x + y * y); // = sqrt(1 - z²) for unit sphere
+
+    // Light shading — drives the interior gradient
+    const dotL   = dot3([x, y, z], light);
+    const shadow = Math.max(0, -dotL);      // 1 in full shadow, 0 in light
+    const lit    = Math.max(0, dotL);       // 1 in full light, 0 in shadow
+
+    // Edge factor: very sharp concentration at the silhouette ring
+    const edgeDark = Math.pow(sr, 3.5);
+
+    // Interior shadow adds density on the dark side, lit side stays sparse
+    const interiorDark = shadow * Math.pow(1.0 - sr, 1.5) * 0.65;
+
+    const darkness = Math.min(1.0, edgeDark * 0.92 + interiorDark);
+
+    // Survival probability: near-zero at highlight (low darkness), near-1 at edge
+    if (rnd[i] > Math.pow(darkness, 0.55)) continue;
+
+    const size   = 0.2 + Math.pow(darkness, 0.85) * 9.0;
+    const bucket = Math.min(BUCKETS - 1, Math.floor(darkness * BUCKETS));
+
+    const sx = cx + x * R;
+    const sy = cy - y * R;
+
+    const p = z >= 0 ? front[bucket] : back[bucket];
+    p.moveTo(sx + size, sy);
+    p.arc(sx, sy, size, 0, Math.PI * 2);
+  }
+
+  // Back hemisphere: visible but ghostly — gives see-through depth
+  for (let b = 0; b < BUCKETS; b++) {
+    ctx.fillStyle = `rgba(0,0,0,${(0.06 + b * 0.025).toFixed(3)})`;
+    ctx.fill(back[b]);
+  }
+
+  // Front hemisphere: solid black
+  for (let b = 0; b < BUCKETS; b++) {
+    ctx.fillStyle = `rgba(0,0,0,${(0.55 + b * 0.06).toFixed(2)})`;
+    ctx.fill(front[b]);
+  }
+
+  requestAnimationFrame(frame);
+}
+
+frame();
+</script>
+</body>
+</html>
