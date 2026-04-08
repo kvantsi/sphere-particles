@@ -29,9 +29,9 @@ function norm3(v) {
 }
 
 // Light from upper-left, toward camera — matches reference highlight position
-const light = norm3([-0.3, 0.6, 0.75]);
+const light = norm3([-0.5, 0.5, 0.7]);
 
-const N = 16000;
+const N = 25000;
 const thetas = new Float32Array(N);
 const phis   = new Float32Array(N);
 const rnd    = new Float32Array(N);
@@ -74,18 +74,18 @@ function frame() {
     const shadow = Math.max(0, -dotL);      // 1 in full shadow, 0 in light
     const lit    = Math.max(0, dotL);       // 1 in full light, 0 in shadow
 
-    // Edge factor: very sharp concentration at the silhouette ring
-    const edgeDark = Math.pow(sr, 3.5);
+    // Edge factor: moderate concentration at the silhouette ring
+    const edgeDark = Math.pow(sr, 2.0);
 
     // Interior shadow adds density on the dark side, lit side stays sparse
-    const interiorDark = shadow * Math.pow(1.0 - sr, 1.5) * 0.65;
+    const interiorDark = shadow * Math.pow(1.0 - sr, 1.0) * 0.55;
 
-    const darkness = Math.min(1.0, edgeDark * 0.92 + interiorDark);
+    const darkness = Math.min(1.0, edgeDark * 0.82 + interiorDark);
 
-    // Survival probability: near-zero at highlight (low darkness), near-1 at edge
-    if (rnd[i] > Math.pow(darkness, 0.55)) continue;
+    // Survival probability: near-zero at highlight, near-1 at edge
+    if (rnd[i] > Math.pow(darkness, 0.65)) continue;
 
-    const size   = 0.2 + Math.pow(darkness, 0.85) * 9.0;
+    const size   = 0.2 + Math.pow(darkness, 1.2) * 5.0;
     const bucket = Math.min(BUCKETS - 1, Math.floor(darkness * BUCKETS));
 
     const sx = cx + x * R;
@@ -96,15 +96,15 @@ function frame() {
     p.arc(sx, sy, size, 0, Math.PI * 2);
   }
 
-  // Back hemisphere: visible but ghostly — gives see-through depth
+  // Back hemisphere: faint — transparent globe effect
   for (let b = 0; b < BUCKETS; b++) {
-    ctx.fillStyle = `rgba(0,0,0,${(0.06 + b * 0.025).toFixed(3)})`;
+    ctx.fillStyle = `rgba(0,0,0,${(0.07 + b * 0.03).toFixed(2)})`;
     ctx.fill(back[b]);
   }
 
   // Front hemisphere: solid black
   for (let b = 0; b < BUCKETS; b++) {
-    ctx.fillStyle = `rgba(0,0,0,${(0.55 + b * 0.06).toFixed(2)})`;
+    ctx.fillStyle = `rgba(0,0,0,${(0.60 + b * 0.05).toFixed(2)})`;
     ctx.fill(front[b]);
   }
 
