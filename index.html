@@ -126,8 +126,8 @@ function makeLayer(pointScale, alphaScale) {
 }
 
 const group = new THREE.Group();
-group.add(makeLayer(11.5, 0.12)); // soft halo per particle
-group.add(makeLayer(5.0, 0.90)); // core dots
+group.add(makeLayer(9.6, 0.12)); // soft halo per particle
+group.add(makeLayer(4.2, 0.90)); // core dots
 scene.add(group);
 
 window.addEventListener('resize', () => {
