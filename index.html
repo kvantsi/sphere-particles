@@ -147,6 +147,42 @@ function animate(ts) {
 }
 
 animate();
+
+// --- Download button ---
+const btn = document.createElement('button');
+btn.textContent = '⬇ Download 5s loop';
+btn.style.cssText = `
+  position:fixed; bottom:24px; right:24px;
+  padding:10px 20px; font-family:sans-serif; font-size:14px;
+  cursor:pointer; border:1px solid #ccc; border-radius:8px;
+  background:#fff; color:#211823; z-index:100;
+  box-shadow:0 2px 8px rgba(0,0,0,0.12);
+`;
+document.body.appendChild(btn);
+
+btn.addEventListener('click', () => {
+  const mimeType = MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' : 'video/webm';
+  const ext      = mimeType === 'video/mp4' ? 'mp4' : 'webm';
+  const stream   = renderer.domElement.captureStream(60);
+  const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 12_000_000 });
+  const chunks   = [];
+
+  recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+  recorder.onstop = () => {
+    const blob = new Blob(chunks, { type: mimeType });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `suun-sphere.${ext}`; a.click();
+    URL.revokeObjectURL(url);
+    btn.textContent = '⬇ Download 5s loop';
+    btn.disabled = false;
+  };
+
+  btn.textContent = '● Recording…';
+  btn.disabled = true;
+  recorder.start();
+  setTimeout(() => recorder.stop(), LOOP_MS);
+});
 </script>
 </body>
 </html>
