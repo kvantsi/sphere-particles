@@ -14,10 +14,11 @@ open sphere-particles.html
 
 Remote: `https://github.com/kvantsi/sphere-particles`
 
-Always commit **and push** after every change:
+After every change, always commit and push so every version is saved to GitHub:
 ```
-git add sphere-particles.html && git commit -m "..." && git push
+git add -p && git commit -m "..." && git push
 ```
+A post-commit hook is installed at `.git/hooks/post-commit` that runs `git push` automatically after every commit — so every commit is immediately on GitHub and revertable.
 
 ## Architecture
 
